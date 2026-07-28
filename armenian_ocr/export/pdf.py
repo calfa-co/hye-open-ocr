@@ -82,12 +82,12 @@ def write_searchable_pdf(
         page_h = pdf_page.rect.height
         page_w = pdf_page.rect.width
         footer_text = "OCRized by Calfa open OCR model"
-        footer_size = max(4.0, min(9.0, page_h * 0.01))
+        footer_size = max(2.0, min(4.5, page_h * 0.005))
         footer_width = font.text_length(footer_text, fontsize=footer_size)
         if footer_width > page_w * 0.9:  # keep within 90% of the width
             footer_size *= (page_w * 0.9) / footer_width
             footer_width = font.text_length(footer_text, fontsize=footer_size)
-        footer = pymupdf.TextWriter(pdf_page.rect, color=(0.5, 0.5, 0.5))
+        footer = pymupdf.TextWriter(pdf_page.rect, color=(0.65, 0.65, 0.65))
         footer.append(
             (
                 (page_w - footer_width) / 2,
