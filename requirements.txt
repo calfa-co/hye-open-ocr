@@ -1,0 +1,15 @@
+# Pinned dependencies for the HuggingFace Space (CPU-only torch).
+# torch/torchvision are installed separately in the Dockerfile from the
+# CPU wheel index (https://download.pytorch.org/whl/cpu).
+numpy==2.2.6
+pandas==2.2.3
+scipy==1.15.2
+opencv-python-headless==4.11.0.86
+pytesseract==0.3.13
+Pillow==11.1.0
+pymupdf==1.25.5
+fonttools==4.56.0
+huggingface-hub==0.30.2
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20

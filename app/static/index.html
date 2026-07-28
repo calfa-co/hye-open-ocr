@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Armenian OCR</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23b04a3c'/><text x='50' y='72' font-size='64' font-family='Georgia,serif' text-anchor='middle' fill='%23ffffff'>Ա</text></svg>">
+</head>
+<body>
+  <div class="app">
+    <!-- ============ LEFT SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">Ա</span>
+        <div>
+          <h1>Armenian OCR</h1>
+          <p class="brand-sub">Open OCR pipeline for Armenian</p>
+        </div>
+      </div>
+
+      <p id="warming" class="notice hidden">Loading models…</p>
+
+      <!-- upload -->
+      <div class="side-block">
+        <div id="dropzone" class="dropzone" tabindex="0">
+          <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.tif,.tiff,.pdf" hidden>
+          <p class="dz-main">Drop a file or <span class="link">browse</span></p>
+          <p class="dz-hint">PNG · JPEG · TIFF · PDF — 30&nbsp;MB, 20&nbsp;pages max</p>
+        </div>
+        <div id="file-chip" class="file-chip hidden">
+          <span id="file-name"></span>
+          <button id="file-clear" aria-label="Remove file" title="Remove">&times;</button>
+        </div>
+      </div>
+
+      <input type="hidden" id="mode-select" value="ocr">
+
+      <!-- 1 · layout: third-party region detectors -->
+      <div class="side-block" id="layout-field">
+        <h2 class="side-title">1 · Layout</h2>
+        <p class="section-note">Finds text regions and their reading order. Third-party generic models.</p>
+        <div class="cards" id="layout-cards" role="radiogroup" aria-label="Layout detector">
+          <label class="opt-card selected">
+            <input type="radio" name="layout" value="yolo" checked>
+            <span class="opt-main">
+              <span class="opt-name">DocLayout-YOLO</span>
+            </span>
+            <span class="opt-desc">Fast · axis-aligned region boxes</span>
+            <span class="opt-tune">
+              <span class="tune-label">Confidence <b data-conf-out>0.20</b></span>
+              <input type="range" class="conf-range" min="0.05" max="0.9" step="0.05" value="0.20">
+            </span>
+          </label>
+          <label class="opt-card">
+            <input type="radio" name="layout" value="paddle">
+            <span class="opt-main">
+              <span class="opt-name" data-paddle-name>PP-DocLayoutV3</span>
+            </span>
+            <span class="opt-desc">Tight polygons · better on skewed / degraded scans</span>
+            <span class="opt-tune">
+              <span class="tune-label">Confidence <b data-conf-out>0.50</b></span>
+              <input type="range" class="conf-range" min="0.05" max="0.9" step="0.05" value="0.50">
+              <span class="tune-label">Reading order</span>
+              <span class="seg tune-seg" id="reading-order-row" role="group" aria-label="Reading order">
+                <button type="button" class="seg-btn active" data-order="xycut">X-Y cut</button>
+                <button type="button" class="seg-btn" data-order="native">Native</button>
+              </span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 2 · recognition: open models trained by Calfa -->
+      <div class="side-block" id="engine-field">
+        <h2 class="side-title">2 · Recognition</h2>
+        <p class="section-note">Transcribes the text. Open models trained by Calfa.</p>
+        <div class="cards" id="engine-cards" role="radiogroup" aria-label="Recognition model">
+          <label class="opt-card selected">
+            <input type="radio" name="engine" value="tesseract" checked>
+            <span class="opt-main">
+              <span class="opt-name">hye-calfa-n</span>
+              <span class="opt-badge muted">Tesseract</span>
+            </span>
+            <span class="opt-desc">Classical, Western &amp; Eastern Armenian</span>
+          </label>
+          <label class="opt-card disabled" data-paddle-engine>
+            <input type="radio" name="engine" value="paddle" disabled>
+            <span class="opt-main">
+              <span class="opt-name" data-paddle-engine-name>paddle-calfa-tiny</span>
+              <span class="opt-badge muted">Paddle</span>
+            </span>
+            <span class="opt-desc">PP-OCRv6 model · Classical, Western &amp; Eastern Armenian</span>
+          </label>
+        </div>
+        <p class="premium-note">Handwritten &amp; complex documents, structure extraction → <a href="https://ocr.calfa.fr" target="_blank" rel="noopener">Calfa</a>.</p>
+      </div>
+
+      <div class="side-block">
+        <button id="run-btn" class="primary block">Run OCR</button>
+        <button id="compare-btn" class="secondary block" type="button">Compare layout &amp; tune regions</button>
+        <p class="compare-label">Inspect detectors and preview regions by confidence, without running OCR.</p>
+      </div>
+
+      <!-- export formats (populated / linked after a run) -->
+      <div class="side-block" id="export-block">
+        <h2 class="side-title">Export</h2>
+        <div class="export-list">
+          <a class="dl" data-fmt="txt"><span class="dl-fmt">TXT</span><span class="dl-desc">plain text</span></a>
+          <a class="dl" data-fmt="pdf"><span class="dl-fmt">PDF</span><span class="dl-desc">searchable</span></a>
+          <a class="dl" data-fmt="alto"><span class="dl-fmt">ALTO</span><span class="dl-desc">XML v4 + coords</span></a>
+          <a class="dl" data-fmt="json"><span class="dl-fmt">JSON</span><span class="dl-desc">boxes + words</span></a>
+        </div>
+        <p class="export-hint">Run a document to enable downloads.</p>
+      </div>
+
+      <button id="docs-toggle" class="docs-link" type="button">
+        <span>Documentation &amp; CLI</span>
+        <span class="docs-arrow">→</span>
+      </button>
+
+      <div class="side-foot">
+        <a href="https://ocr.calfa.fr" target="_blank" rel="noopener" class="calfa-link">
+          Manuscripts &amp; full structure? → <strong>Calfa&nbsp;OCR</strong>
+        </a>
+        <p class="footer-credits">
+          <a href="https://github.com/calfa-co" target="_blank" rel="noopener">GitHub</a>
+          · An open Armenian OCR framework · CC&nbsp;BY-NC&nbsp;4.0
+        </p>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN WORKSPACE ============ -->
+    <main class="workspace">
+      <div id="error-banner" class="error-banner hidden">
+        <span id="error-text"></span>
+        <button id="error-close" aria-label="Dismiss">&times;</button>
+      </div>
+
+      <!-- empty state -->
+      <section id="empty-state" class="empty-state">
+        <div class="empty-inner">
+          <svg class="empty-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M13 5h14l8 8v30a2 2 0 0 1-2 2H13a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M27 5v8h8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M17 24h14M17 30h14M17 36h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <h2>Drop a document to start</h2>
+          <p>
+            An open OCR pipeline for printed Armenian, maintained by Calfa:
+            third-party layout detection plus open recognition models trained by
+            Calfa. Pick a layout model and a recognition model in the panel, then
+            run. For handwritten and complex documents, and structure extraction,
+            see <a href="https://ocr.calfa.fr" target="_blank" rel="noopener">Calfa</a>.
+          </p>
+        </div>
+      </section>
+
+      <!-- progress -->
+      <section id="progress-card" class="progress-card hidden">
+        <div class="progress-head">
+          <span id="progress-label">Queued…</span>
+          <a href="#" id="cancel-link">Cancel</a>
+        </div>
+        <div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div>
+      </section>
+
+      <!-- results: image | prediction side by side -->
+      <section id="results-card" class="results hidden">
+        <div class="results-bar">
+          <div id="candidate-row" class="candidate-row hidden">
+            <label class="field inline">
+              <span class="field-label">Candidate</span>
+              <select id="candidate-select"></select>
+            </label>
+            <label class="field inline conf-filter" title="Hide regions below this detector confidence">
+              <span class="field-label">Confidence <b id="preview-conf-out">0.50</b></span>
+              <input type="range" id="preview-conf" class="conf-range" min="0.05" max="0.9" step="0.05" value="0.50">
+              <span id="preview-conf-count" class="conf-count"></span>
+            </label>
+          </div>
+          <div class="pager">
+            <button id="prev-page" aria-label="Previous page">&#9664;</button>
+            <span id="page-indicator">1/1</span>
+            <button id="next-page" aria-label="Next page">&#9654;</button>
+          </div>
+          <button id="new-doc" class="ghost">New document</button>
+        </div>
+
+        <div class="split">
+          <!-- image pane -->
+          <div class="pane pane-image">
+            <div class="pane-head">
+              <span class="pane-title">Page</span>
+              <div class="pane-tools">
+                <div class="zoom" role="group" aria-label="Zoom">
+                  <button id="zoom-dec" type="button" aria-label="Zoom out">&minus;</button>
+                  <button id="zoom-out-label" type="button" title="Reset zoom">100%</button>
+                  <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+                </div>
+                <label class="overlay-switch" title="Show or hide detections on the image">
+                  <input type="checkbox" id="overlay-toggle" checked>
+                  <span>Detections</span>
+                </label>
+                <div id="overlay-mode-row" class="seg" role="group" aria-label="Overlay mode">
+                  <button class="seg-btn active" data-mode="regions">Regions</button>
+                  <button class="seg-btn" data-mode="lines">Lines</button>
+                </div>
+              </div>
+            </div>
+            <div class="overlay-wrap">
+              <img id="page-img" alt="Page preview">
+              <canvas id="page-canvas"></canvas>
+            </div>
+          </div>
+
+          <!-- prediction pane -->
+          <div class="pane pane-text" id="text-pane">
+            <div class="pane-head">
+              <span class="pane-title">Transcription</span>
+              <button id="copy-btn" class="ghost sm">Copy</button>
+            </div>
+            <pre id="text-output" dir="ltr"></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- docs -->
+      <section id="docs-card" class="docs hidden">
+        <div class="results-bar">
+          <h2 class="docs-title">Documentation</h2>
+          <button id="docs-close" class="ghost" type="button">← Back</button>
+        </div>
+        <div class="docs-body">
+          <div class="doc-block">
+            <h3>What it does</h3>
+            <p>
+              An open OCR pipeline for printed Armenian, maintained by Calfa. It
+              runs in two stages: a <strong>layout</strong> model finds text
+              regions and their reading order, then a <strong>recognition</strong>
+              model transcribes each region. Layout uses third-party generic
+              detectors; recognition uses open models trained by Calfa
+              (<code>hye-calfa-n</code> — based on Tesseract&nbsp;5 — and
+              <code>paddle-calfa-tiny</code> — based on PaddleOCRv6, both trained
+              for Western, Eastern and Classical Armenian). This is the open
+              release, not Calfa's premium OCR; for handwritten and complex
+              documents, and structure extraction, see
+              <a href="https://ocr.calfa.fr" target="_blank" rel="noopener">Calfa</a>.
+            </p>
+          </div>
+
+          <div class="doc-block">
+            <h3>Configuration</h3>
+            <ul class="doc-list">
+              <li><strong>Confidence</strong> — the layout detector's threshold. Lower it to catch faint / small regions on bad scans; raise it to drop noise.</li>
+              <li><strong>Reading order</strong> — how regions are sequenced: <em>X-Y cut</em> (default) or, with PP-DocLayoutV3, its own <em>Native</em> predicted order.</li>
+              <li><strong>Detections toggle</strong> — show or hide the region / line overlay drawn on the page.</li>
+              <li><strong>Compare detectors</strong> — the button under the panel runs the layout detectors side by side without OCR, to inspect region quality.</li>
+            </ul>
+          </div>
+
+          <div class="doc-block">
+            <h3>Models &amp; sources</h3>
+            <ul class="doc-list">
+              <li><strong>Layout (third-party, generic)</strong> —
+                <a href="https://huggingface.co/juliozhao/DocLayout-YOLO-DocStructBench" target="_blank" rel="noopener">DocLayout-YOLO</a>
+                and
+                <a href="https://huggingface.co/PaddlePaddle/PP-DocLayoutV3_safetensors" target="_blank" rel="noopener">PP-DocLayoutV3</a>:
+                generic document-layout detectors, not Armenian-specific.</li>
+              <li><strong>Reading order</strong> — recursive X-Y cut (a projection heuristic drawn from Portmind and updated), or PP-DocLayoutV3's own predicted order.</li>
+              <li><strong>Recognition (open, trained by Calfa)</strong> —
+                <code>hye-calfa-n</code> (Tesseract) and
+                <a href="https://github.com/calfa-co/hye-paddle" target="_blank" rel="noopener"><code>paddle-calfa-tiny</code></a>
+                (PP-OCRv6-tiny).</li>
+            </ul>
+          </div>
+
+          <div class="doc-block">
+            <h3>Command-line interface</h3>
+            <p>The same pipeline ships as the <code>hyocr</code> CLI — ideal for batch &amp; scripting.</p>
+            <h4>Install</h4>
+            <pre class="cli-block"><code># from a local clone
+pip install .
+
+# or straight from the repo
+pip install "hye-open-ocr @ git+https://github.com/calfa-co/hye-open-ocr"</code></pre>
+            <h4>Usage</h4>
+            <pre class="cli-block"><code># basic: writes page.txt + page.json into out/
+hyocr page.png -o out/
+
+# choose formats: text, JSON, ALTO XML, searchable PDF
+hyocr scan.pdf -f txt,json,alto,pdf -o out/
+
+# pick a generic layout detector and an open recognition model
+hyocr page.png --layout paddle --recognizer tesseract
+
+# tune region detection + Tesseract segmentation
+hyocr page.jpg --yolo-conf 0.25 --region-psm 4
+
+# open Paddle model (paddle-calfa-tiny)
+hyocr page.png --recognizer paddle -f txt,json
+
+# optional: point at a local copy instead of the auto-download
+export ARMENIAN_OCR_PADDLE_REC_DIR=/path/to/hye-paddle/inference</code></pre>
+            <p class="cli-note">
+              Key options: <code>--layout {yolo,paddle}</code>,
+              <code>--recognizer {tesseract,paddle}</code>,
+              <code>--yolo-conf</code>, <code>--region-psm</code>,
+              <code>-f/--formats</code>, <code>-o/--output-dir</code>.
+              Run <code>hyocr --help</code> for the full list.
+            </p>
+          </div>
+
+          <div class="doc-block">
+            <h3>Export formats</h3>
+            <ul class="doc-list">
+              <li><strong>TXT</strong> — plain text in reading order.</li>
+              <li><strong>PDF</strong> — searchable PDF (image + invisible text layer).</li>
+              <li><strong>ALTO</strong> — ALTO XML v4 with block / line / word coordinates (and polygons where available).</li>
+              <li><strong>JSON</strong> — full structure: paragraphs, lines, words, boxes, confidences.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

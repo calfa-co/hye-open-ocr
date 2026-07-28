@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hye-open-ocr"
+version = "0.2.0"
+description = "An open OCR framework for Armenian: generic layout detection (DocLayout-YOLO / PP-DocLayoutV3) + open recognition models trained by Calfa (Tesseract / PaddleOCR)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE-CC-BY-NC-4.0.md" }
+authors = [
+    { name = "Calfa" },
+]
+dependencies = [
+    "torch>=2.4",
+    "torchvision>=0.19",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "scipy>=1.11",
+    "opencv-python-headless>=4.8",
+    "pytesseract>=0.3.13",
+    "Pillow>=10.0",
+    "pymupdf>=1.24.0",
+    "fonttools>=4.50",
+    "huggingface-hub>=0.23",
+]
+
+[project.urls]
+Homepage = "https://github.com/calfa-co/hye-open-ocr"
+Repository = "https://github.com/calfa-co/hye-open-ocr"
+"Premium OCR" = "https://ocr.calfa.fr"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pre-commit",
+    "ruff",
+    "rapidfuzz>=3.0",
+]
+app = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "python-multipart>=0.0.9",
+]
+paddle = [
+    # PP-DocLayoutV3 (tight polygon layout) + the custom PP-OCRv6 recognizer
+    # need a recent PaddleOCR/PaddleX. CPU wheel: `pip install paddlepaddle`
+    # (GPU users install paddlepaddle-gpu instead).
+    "paddleocr>=3.7",
+    "paddlepaddle>=3.2",
+    # PP-DocLayoutV3 runs through PaddleX's layout_analysis predictor, which
+    # loads the model with transformers (torch) — hence these two.
+    "transformers>=4.51",
+    "safetensors>=0.4",
+]
+synth = [
+    "albumentations>=2.0",
+    "tqdm>=4.66",
+    "pillow>=10.0",
+    "opencv-python-headless>=4.8",
+    "huggingface-hub>=0.23",
+]
+
+[project.scripts]
+hyocr = "armenian_ocr.cli:main"
+armenian-ocr = "armenian_ocr.cli:main"  # legacy alias
+
+[tool.hatch.build.targets.wheel]
+packages = ["armenian_ocr"]
+
+[tool.ruff]
+line-length = 79
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E203", "E501"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: end-to-end tests requiring model weights and tesseract",
+]
+addopts = "-m 'not slow'"
