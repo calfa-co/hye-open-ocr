@@ -97,6 +97,12 @@ def build_parser() -> argparse.ArgumentParser:
         "or set ARMENIAN_OCR_PADDLE_LAYOUT_DIR).",
     )
     parser.add_argument(
+        "--paddle-rec-dir",
+        default=None,
+        help="Local paddle-calfa-tiny inference directory (skips "
+        "auto-download; or set ARMENIAN_OCR_PADDLE_REC_DIR).",
+    )
+    parser.add_argument(
         "--tessdata-dir",
         default=None,
         help="Local tessdata directory containing {lang}.traineddata "
@@ -264,8 +270,14 @@ def main(argv=None) -> int:
     if args.recognizer == "paddle":
         from armenian_ocr.recognition.paddle import PaddleRecognizer
 
+        if args.paddle_rec_dir is None:
+            print(
+                "downloading paddle model paddle-calfa-tiny "
+                "(github.com/calfa-co/hye-paddle)… "
+                "(first run only; cached afterwards)"
+            )
         try:
-            recognizer = PaddleRecognizer()
+            recognizer = PaddleRecognizer(rec_model_dir=args.paddle_rec_dir)
         except RuntimeError as error:
             print(f"error: {error}", file=sys.stderr)
             return 1
@@ -276,7 +288,8 @@ def main(argv=None) -> int:
         if tessdata_dir is None:
             print(
                 "downloading tesseract model hye-calfa-n "
-                "(github.com/calfa-co/hye-tesseract)…"
+                "(github.com/calfa-co/hye-tesseract)… "
+                "(first run only; cached afterwards)"
             )
             tessdata_dir = models.get_tessdata_dir()
         recognizer = TesseractRecognizer(
@@ -304,7 +317,10 @@ def main(argv=None) -> int:
         from armenian_ocr.layout_yolo import YoloLayoutEngine
 
         if args.yolo_weights is None:
-            print("downloading DocLayout-YOLO weights…")
+            print(
+                "downloading DocLayout-YOLO weights… "
+                "(first run only; cached afterwards)"
+            )
         engine = YoloLayoutEngine(
             weights=args.yolo_weights,
             device=args.device,
@@ -312,6 +328,7 @@ def main(argv=None) -> int:
             reading_order=args.reading_order,
         )
 
+    print("models ready.")
     pipeline = OcrPipeline(layout_engine=engine, recognizer=recognizer)
 
     from armenian_ocr.documents import iter_pages

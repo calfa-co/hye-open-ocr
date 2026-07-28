@@ -15,6 +15,8 @@ authors = [
 dependencies = [
     "torch>=2.4",
     "torchvision>=0.19",
+    # DocLayout-YOLO is the default layout backend (third-party, generic).
+    "doclayout-yolo>=0.0.4",
     "numpy>=1.26",
     "pandas>=2.0",
     "scipy>=1.11",
