@@ -77,14 +77,21 @@ def write_searchable_pdf(
         writer.write_text(pdf_page, render_mode=3)  # invisible
 
         # Visible provenance line in the bottom margin, over the page image.
-        footer = pymupdf.TextWriter(pdf_page.rect, color=(0.5, 0.5, 0.5))
-        footer_size = 7
+        # Size is proportional to the page height (~1%) so it stays small on
+        # any document, and is shrunk further if it would overflow the width.
+        page_h = pdf_page.rect.height
+        page_w = pdf_page.rect.width
         footer_text = "OCRized by Calfa open OCR model"
+        footer_size = max(4.0, min(9.0, page_h * 0.01))
         footer_width = font.text_length(footer_text, fontsize=footer_size)
+        if footer_width > page_w * 0.9:  # keep within 90% of the width
+            footer_size *= (page_w * 0.9) / footer_width
+            footer_width = font.text_length(footer_text, fontsize=footer_size)
+        footer = pymupdf.TextWriter(pdf_page.rect, color=(0.5, 0.5, 0.5))
         footer.append(
             (
-                (pdf_page.rect.width - footer_width) / 2,
-                pdf_page.rect.height - 6,
+                (page_w - footer_width) / 2,
+                page_h - footer_size * 0.6,
             ),
             footer_text,
             font=font,

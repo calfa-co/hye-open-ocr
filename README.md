@@ -86,7 +86,7 @@ you need:
 scripting.
 
 ```shell
-hyocr document.pdf --layout yolo -f txt,json,alto,pdf -o output/
+hyocr document.pdf --layout yolo --recognizer paddle -f pdf -o output/
 ```
 
 Useful options:

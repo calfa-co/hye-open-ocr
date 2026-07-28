@@ -288,7 +288,10 @@ pip install .
 # or straight from the repo
 pip install "hye-open-ocr @ git+https://github.com/calfa-co/hye-open-ocr"</code></pre>
             <h4>Usage</h4>
-            <pre class="cli-block"><code># basic: writes page.txt + page.json into out/
+            <pre class="cli-block"><code># recommended: YOLO layout + Paddle recognizer, searchable PDF
+hyocr document.pdf --layout yolo --recognizer paddle -f pdf -o output/
+
+# basic: writes page.txt + page.json into out/
 hyocr page.png -o out/
 
 # choose formats: text, JSON, ALTO XML, searchable PDF
