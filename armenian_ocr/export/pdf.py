@@ -76,6 +76,22 @@ def write_searchable_pdf(
                 )
         writer.write_text(pdf_page, render_mode=3)  # invisible
 
+        # Visible provenance line in the bottom margin, over the page image.
+        footer = pymupdf.TextWriter(pdf_page.rect, color=(0.5, 0.5, 0.5))
+        footer_size = 7
+        footer_text = "OCRized by Calfa open OCR model"
+        footer_width = font.text_length(footer_text, fontsize=footer_size)
+        footer.append(
+            (
+                (pdf_page.rect.width - footer_width) / 2,
+                pdf_page.rect.height - 6,
+            ),
+            footer_text,
+            font=font,
+            fontsize=footer_size,
+        )
+        footer.write_text(pdf_page)  # visible (default render mode)
+
     try:
         doc.subset_fonts()  # needs fonttools; shrinks the embedded font
     except Exception:

@@ -103,6 +103,43 @@ def _github_download(repo: str, ref: str, path_in_repo: str) -> Path:
     return target
 
 
+def tessdata_cached(revision: Optional[str] = None) -> bool:
+    """True if the tesseract model is already available locally.
+
+    Either an override directory is set (ARMENIAN_OCR_TESSDATA_DIR) or the
+    pinned file is present in the cache — so no download will happen.
+    """
+    if os.environ.get(ENV_TESSDATA_DIR):
+        return True
+    ref = revision or os.environ.get(ENV_TESSERACT_VERSION) or TESSERACT_VERSION
+    return (_cache_root() / TESSERACT_REPO / ref / TESSDATA_FILE).exists()
+
+
+def paddle_rec_cached(revision: Optional[str] = None) -> bool:
+    """True if the paddle recognizer model is already available locally."""
+    if os.environ.get(ENV_PADDLE_REC_DIR):
+        return True
+    ref = revision or os.environ.get(ENV_PADDLE_VERSION) or PADDLE_VERSION
+    root = _cache_root() / PADDLE_REPO / ref / "inference"
+    return all((root / name).exists() for name in PADDLE_INFERENCE_FILES)
+
+
+def yolo_weights_cached() -> bool:
+    """True if the DocLayout-YOLO weights are already available locally.
+
+    An override path counts; otherwise check the HuggingFace hub cache without
+    triggering a download.
+    """
+    if os.environ.get(ENV_YOLO_WEIGHTS):
+        return True
+    try:
+        from huggingface_hub import try_to_load_from_cache
+    except Exception:
+        return False
+    hit = try_to_load_from_cache(DEFAULT_YOLO_REPO, YOLO_FILE)
+    return isinstance(hit, str)
+
+
 def get_yolo_weights(
     repo_id: Optional[str] = None, revision: Optional[str] = None
 ) -> Path:

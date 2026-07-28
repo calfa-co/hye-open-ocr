@@ -136,13 +136,23 @@ def test_searchable_pdf_text_extractable_and_invisible(tmp_path, page):
         assert ARMENIAN in extracted
         assert CYRILLIC in extracted
 
-        # invisible text: rendering must stay blank (white background)
-        pixmap = doc[0].get_pixmap(dpi=72)
-        samples = np.frombuffer(pixmap.samples, dtype=np.uint8)
-        assert samples.min() > 240
+        # invisible OCR layer: the page renders blank *above* the footer band
+        # (a visible provenance line is drawn in the bottom margin).
+        page_obj = doc[0]
+        pixmap = page_obj.get_pixmap(dpi=72)
+        height = pixmap.height
+        body = np.frombuffer(pixmap.samples, dtype=np.uint8).reshape(
+            height, pixmap.width, pixmap.n
+        )
+        footer_band = int(height * 0.9)  # bottom 10% holds the footer
+        assert body[:footer_band].min() > 240
+
+        # the footer line is visible and searchable
+        assert "OCRized by Calfa open OCR model" in extracted
+        assert page_obj.search_for("OCRized by Calfa open OCR model")
 
         # text is positioned where the word box is (x=100px at 300 dpi
         # -> 24pt), tolerance for font metrics
-        rects = doc[0].search_for(ARMENIAN)
+        rects = page_obj.search_for(ARMENIAN)
         assert rects, "Armenian word not searchable"
         assert abs(rects[0].x0 - 24) < 6

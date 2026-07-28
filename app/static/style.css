@@ -265,6 +265,13 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 .opt-badge.alt { color: #1565c0; background: color-mix(in srgb, #1565c0 12%, transparent); }
 .opt-badge.muted { color: var(--faint); background: var(--bg); }
+.opt-tag {
+  margin-left: auto;
+  font-size: 0.66rem;
+  font-style: italic;
+  color: var(--muted);
+  white-space: nowrap;
+}
 .opt-desc { font-size: 0.76rem; color: var(--muted); line-height: 1.45; }
 
 /* inline tune control inside a card — only for the selected card */

@@ -293,11 +293,10 @@ def main(argv=None) -> int:
     if args.recognizer == "paddle":
         from armenian_ocr.recognition.paddle import PaddleRecognizer
 
-        if args.paddle_rec_dir is None:
+        if args.paddle_rec_dir is None and not models.paddle_rec_cached():
             print(
                 "downloading paddle model paddle-calfa-tiny "
-                "(github.com/calfa-co/hye-paddle)… "
-                "(first run only; cached afterwards)"
+                "(github.com/calfa-co/hye-paddle)… (one-time, cached)"
             )
         try:
             recognizer = PaddleRecognizer(rec_model_dir=args.paddle_rec_dir)
@@ -309,11 +308,11 @@ def main(argv=None) -> int:
 
         tessdata_dir = args.tessdata_dir
         if tessdata_dir is None:
-            print(
-                "downloading tesseract model hye-calfa-n "
-                "(github.com/calfa-co/hye-tesseract)… "
-                "(first run only; cached afterwards)"
-            )
+            if not models.tessdata_cached():
+                print(
+                    "downloading tesseract model hye-calfa-n "
+                    "(github.com/calfa-co/hye-tesseract)… (one-time, cached)"
+                )
             tessdata_dir = models.get_tessdata_dir()
         recognizer = TesseractRecognizer(
             lang=args.lang,
@@ -339,11 +338,8 @@ def main(argv=None) -> int:
     else:
         from armenian_ocr.layout_yolo import YoloLayoutEngine
 
-        if args.yolo_weights is None:
-            print(
-                "downloading DocLayout-YOLO weights… "
-                "(first run only; cached afterwards)"
-            )
+        if args.yolo_weights is None and not models.yolo_weights_cached():
+            print("downloading DocLayout-YOLO weights… (one-time, cached)")
         engine = YoloLayoutEngine(
             weights=args.yolo_weights,
             device=args.device,

@@ -36,7 +36,7 @@ image ──► LayoutEngine.analyze(image)            ──► regions (readin
 | Stage | Options |
 |---|---|
 | Layout | `yolo` (DocLayout-YOLO, fast) or `paddle` (PP-DocLayoutV3, tight polygons on skewed/degraded scans); reading order `xycut` (default) or `native` (paddle only) |
-| Recognition | `tesseract` (`hye-calfa-n`, default) or `paddle` (`paddle-calfa-tiny`) |
+| Recognition | `tesseract` (`hye-calfa-n`, default — faster) or `paddle` (`paddle-calfa-tiny` — higher accuracy) |
 
 The layout stage only finds regions; line and word segmentation is left to the
 recognizer.
