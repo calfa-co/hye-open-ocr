@@ -10,6 +10,14 @@ Pillow==11.1.0
 pymupdf==1.25.5
 fonttools==4.56.0
 huggingface-hub==0.30.2
+platformdirs>=4
+# default layout backend (DocLayout-YOLO); pulls albumentations/matplotlib etc.
+doclayout-yolo>=0.0.4
+# paddle recognizer (paddle-calfa-tiny) + PP-DocLayoutV3 layout
+paddleocr>=3.7
+paddlepaddle>=3.2
+transformers>=4.51
+safetensors>=0.4
 fastapi==0.115.12
 uvicorn[standard]==0.34.0
 python-multipart==0.0.20

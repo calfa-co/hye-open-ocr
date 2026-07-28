@@ -10,7 +10,8 @@ RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH \
-    HF_HOME=/home/user/.cache/huggingface
+    HF_HOME=/home/user/.cache/huggingface \
+    ARMENIAN_OCR_MODELS_SOURCE=hf
 WORKDIR /home/user/app
 
 COPY --chown=user requirements.txt .

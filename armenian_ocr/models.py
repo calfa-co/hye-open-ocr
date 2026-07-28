@@ -29,12 +29,18 @@ ENV_PADDLE_REC_DIR = "ARMENIAN_OCR_PADDLE_REC_DIR"
 ENV_YOLO_WEIGHTS = "ARMENIAN_OCR_YOLO_WEIGHTS"
 ENV_TESSERACT_VERSION = "ARMENIAN_OCR_TESSERACT_VERSION"
 ENV_PADDLE_VERSION = "ARMENIAN_OCR_PADDLE_VERSION"
+# Where to fetch the Calfa models from: "github" (default) or "hf". The HF
+# mirrors live under the calfa-ai org; the HuggingFace Space sets this to "hf"
+# so it pulls within the Hub instead of GitHub.
+ENV_MODELS_SOURCE = "ARMENIAN_OCR_MODELS_SOURCE"
 
-# Calfa-trained models, published as public GitHub repos under calfa-co. Files
-# are pulled from raw.githubusercontent.com at a pinned version tag and cached
-# locally (side by side per version). Bump the *_VERSION constant to roll the
-# default to a new release; override at runtime with the matching env var.
+# Calfa-trained models, published both as public GitHub repos under calfa-co
+# (default: raw.githubusercontent.com at a pinned version tag, cached locally
+# side by side per version) and as HuggingFace mirrors under calfa-ai. Bump the
+# *_VERSION constant to roll the default to a new release; override at runtime
+# with the matching env var.
 GITHUB_ORG = "calfa-co"
+HF_ORG = "calfa-ai"
 
 TESSERACT_REPO = "hye-tesseract"
 TESSERACT_VERSION = "v1.0.0"
@@ -47,6 +53,15 @@ PADDLE_INFERENCE_FILES = (
     "inference.pdiparams",
     "inference.yml",
 )
+
+
+def _models_source() -> str:
+    """Active source for the Calfa models: 'hf' or 'github' (default)."""
+    return (
+        "hf"
+        if os.environ.get(ENV_MODELS_SOURCE, "").strip().lower() == "hf"
+        else "github"
+    )
 
 # DocLayout-YOLO region detector (default layout engine). Hosted on the
 # authors' public HuggingFace repo — a third-party generic model.
@@ -103,6 +118,37 @@ def _github_download(repo: str, ref: str, path_in_repo: str) -> Path:
     return target
 
 
+def _hf_download(repo: str, ref: str, path_in_repo: str) -> Path:
+    """Download ``path_in_repo`` from the HF mirror ``calfa-ai/{repo}@{ref}``.
+
+    Uses the HuggingFace hub cache. Raises ``RuntimeError`` on any error so
+    callers can surface a normal engine error, matching ``_github_download``.
+    """
+    from huggingface_hub import hf_hub_download
+
+    try:
+        return Path(
+            hf_hub_download(
+                f"{HF_ORG}/{repo}", path_in_repo, revision=ref
+            )
+        )
+    except Exception as error:
+        raise RuntimeError(
+            f"could not download {path_in_repo} from "
+            f"{HF_ORG}/{repo}@{ref}: {error}"
+        ) from error
+
+
+def _hf_cached(repo: str, ref: str, path_in_repo: str) -> bool:
+    """True if ``path_in_repo`` from ``calfa-ai/{repo}@{ref}`` is in the HF cache."""
+    try:
+        from huggingface_hub import try_to_load_from_cache
+    except Exception:
+        return False
+    hit = try_to_load_from_cache(f"{HF_ORG}/{repo}", path_in_repo, revision=ref)
+    return isinstance(hit, str)
+
+
 def tessdata_cached(revision: Optional[str] = None) -> bool:
     """True if the tesseract model is already available locally.
 
@@ -112,6 +158,8 @@ def tessdata_cached(revision: Optional[str] = None) -> bool:
     if os.environ.get(ENV_TESSDATA_DIR):
         return True
     ref = revision or os.environ.get(ENV_TESSERACT_VERSION) or TESSERACT_VERSION
+    if _models_source() == "hf":
+        return _hf_cached(TESSERACT_REPO, ref, TESSDATA_FILE)
     return (_cache_root() / TESSERACT_REPO / ref / TESSDATA_FILE).exists()
 
 
@@ -120,6 +168,11 @@ def paddle_rec_cached(revision: Optional[str] = None) -> bool:
     if os.environ.get(ENV_PADDLE_REC_DIR):
         return True
     ref = revision or os.environ.get(ENV_PADDLE_VERSION) or PADDLE_VERSION
+    if _models_source() == "hf":
+        return all(
+            _hf_cached(PADDLE_REPO, ref, f"inference/{name}")
+            for name in PADDLE_INFERENCE_FILES
+        )
     root = _cache_root() / PADDLE_REPO / ref / "inference"
     return all((root / name).exists() for name in PADDLE_INFERENCE_FILES)
 
@@ -176,7 +229,10 @@ def get_tessdata_dir(revision: Optional[str] = None) -> Path:
         return Path(local)
 
     ref = revision or os.environ.get(ENV_TESSERACT_VERSION) or TESSERACT_VERSION
-    path = _github_download(TESSERACT_REPO, ref, TESSDATA_FILE)
+    if _models_source() == "hf":
+        path = _hf_download(TESSERACT_REPO, ref, TESSDATA_FILE)
+    else:
+        path = _github_download(TESSERACT_REPO, ref, TESSDATA_FILE)
     return path.parent
 
 
@@ -195,9 +251,14 @@ def get_paddle_rec_dir(revision: Optional[str] = None) -> Path:
         return Path(local)
 
     ref = revision or os.environ.get(ENV_PADDLE_VERSION) or PADDLE_VERSION
+    use_hf = _models_source() == "hf"
     directory = None
     for name in PADDLE_INFERENCE_FILES:
-        path = _github_download(PADDLE_REPO, ref, f"inference/{name}")
+        path_in_repo = f"inference/{name}"
+        if use_hf:
+            path = _hf_download(PADDLE_REPO, ref, path_in_repo)
+        else:
+            path = _github_download(PADDLE_REPO, ref, path_in_repo)
         directory = path.parent
     assert directory is not None  # PADDLE_INFERENCE_FILES is non-empty
     return directory
