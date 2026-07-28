@@ -5,8 +5,22 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+import warnings
 from pathlib import Path
 from time import time
+
+
+def _progress(iterable, *, total=None, desc="pages"):
+    """Wrap an iterable in a tqdm progress bar when tqdm is available.
+
+    tqdm ships with the doclayout-yolo dependency; if it is somehow missing
+    we degrade gracefully to the bare iterable.
+    """
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        return iterable
+    return tqdm(iterable, total=total, desc=desc, unit="page")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -156,7 +170,7 @@ def _run_compare(args, input_path: Path) -> int:
     import cv2
 
     from armenian_ocr.compare import compare_layouts
-    from armenian_ocr.documents import iter_pages
+    from armenian_ocr.documents import count_pdf_pages, iter_pages
 
     detectors = [d.strip() for d in args.detectors.split(",") if d.strip()]
     orders = [o.strip() for o in args.orders.split(",") if o.strip()]
@@ -164,12 +178,14 @@ def _run_compare(args, input_path: Path) -> int:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     multipage = input_path.suffix.lower() == ".pdf"
+    total_pages = count_pdf_pages(input_path) if multipage else 1
 
     start = time()
     written = []
-    for index, (image, _dpi) in enumerate(
-        iter_pages(input_path, dpi=args.dpi)
-    ):
+    page_iter = iter_pages(input_path, dpi=args.dpi)
+    if not args.verbose:
+        page_iter = _progress(page_iter, total=total_pages)
+    for index, (image, _dpi) in enumerate(page_iter):
         page_tag = f".p{index}" if multipage else ""
         candidates = compare_layouts(
             image,
@@ -212,6 +228,13 @@ def _run_compare(args, input_path: Path) -> int:
 def main(argv=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    # PaddlePaddle prints a UserWarning about ccache being absent the first
+    # time it is imported; it is harmless here (we ship prebuilt wheels, no
+    # source recompilation), so silence just that one message.
+    warnings.filterwarnings(
+        "ignore", message="No ccache found.*", category=UserWarning
+    )
 
     logging.basicConfig(
         level=logging.INFO if args.verbose else logging.WARNING,
@@ -331,14 +354,22 @@ def main(argv=None) -> int:
     print("models ready.")
     pipeline = OcrPipeline(layout_engine=engine, recognizer=recognizer)
 
-    from armenian_ocr.documents import iter_pages
+    from armenian_ocr.documents import count_pdf_pages, iter_pages
+
+    total_pages = (
+        count_pdf_pages(input_path)
+        if input_path.suffix.lower() == ".pdf"
+        else 1
+    )
 
     start = time()
     keep_images = "pdf" in formats
     pages, images = [], ([] if keep_images else None)
-    for index, (image, page_dpi) in enumerate(
-        iter_pages(input_path, dpi=args.dpi)
-    ):
+    page_iter = iter_pages(input_path, dpi=args.dpi)
+    # A bar only makes sense when we are not already printing per-page lines.
+    if not args.verbose:
+        page_iter = _progress(page_iter, total=total_pages)
+    for index, (image, page_dpi) in enumerate(page_iter):
         if args.verbose:
             print(f"page {index + 1}…")
         pages.append(pipeline.process_image(image, dpi=page_dpi))
