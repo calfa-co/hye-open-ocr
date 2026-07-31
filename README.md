@@ -188,3 +188,40 @@ license and the credits above apply to any use, including standalone use of a
 model in Tesseract or PaddleOCR.
 Third-party components keep their own licenses: **PyMuPDF** and
 **DocLayout-YOLO** are AGPL-3.0; **PaddleOCR** is Apache-2.0.
+
+## How to cite and some references on Armenian OCR
+
+```bibtex
+@article{vidal2026semantic,
+  title={Semantic-Guided Reading Order Reconstruction in Historical Armenian Newspapers with LLMs},
+  author={Vidal-Gor{\`e}ne, Chahan and Tomeh, Nadi and Khurshudyan, Victoria},
+  journal={arXiv preprint arXiv:2607.00596},
+  year={2026}
+}
+```
+
+```bibtex
+@unpublished{vidalgorene:hal-05021697,
+  TITLE = {{Armenian HTR: State of the art, transcription guidelines and good practices}},
+  AUTHOR = {Vidal-Gor{\`e}ne, Chahan and Decours-Perez, Ali{\'e}nor and Kasparian, Anahide and Tanelian, Ani and Ohanian, Agn{\`e}s},
+  URL = {https://enc.hal.science/hal-05021697},
+  NOTE = {BnF DataLab Projet Fonds Dulaurier},
+  YEAR = {2025},
+  KEYWORDS = {Handwritten Text Recognition ; Armenian Paleography ; HTR ; Historical Manuscripts ; Armenian ; Paleography ; Guidelines and recommendations},
+  PDF = {https://enc.hal.science/hal-05021697v1/file/Armenian_HTR_Guidelines.pdf},
+  HAL_ID = {hal-05021697},
+  HAL_VERSION = {v1},
+}
+```
+
+```bibtex
+@article{vidal2023ocr,
+  title={OCR/HTR technologies and Armenian heritage preservation},
+  author={Vidal-Gor{\`e}ne, Chahan},
+  journal={Bulletin of Armenian libraries},
+  volume={6},
+  number={1},
+  pages={61--65},
+  year={2023}
+}
+```
