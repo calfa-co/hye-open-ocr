@@ -3,23 +3,32 @@
 An **open** OCR pipeline for **printed Armenian documents** (Classical, Western
 and Eastern), maintained by [Calfa](https://calfa.fr). This open release is
 designed for a wide variety of documents. For handwritten and complex documents,
-and structure extraction, see [Calfa](https://ocr.calfa.fr). It is built from two
+and structure extraction, see [Calfa](https://ocr.calfa.fr). 
+
+It is built from two
 complementary stages:
 
 - **Layout detection & reading order** — a third-party, generic document-layout
   detector ([DocLayout-YOLO](https://github.com/opendatalab/DocLayout-YOLO) by
   [opendatalab](https://github.com/opendatalab), or PP-DocLayoutV3) finds text
   regions, which are then ordered with a recursive X-Y-cut reading-order
-  heuristic drawn from Portmind's armenian-ocr and updated here.
+  heuristic drawn from Portmind's armenian-ocr and updated here by Calfa.
 - **Recognition** — open models trained by [Calfa](https://calfa.fr):
-  [`hye-calfa-n`](https://github.com/calfa-co/hye-tesseract) (Tesseract, the
-  default) and [`paddle-calfa-tiny`](https://github.com/calfa-co/hye-paddle)
-  (PaddleOCR), covering Classical, Western and Eastern Armenian.
+  [`hye-calfa-n`](https://github.com/calfa-co/hye-tesseract) (based on
+  Tesseract 5, the default and the fastest) and
+  [`paddle-calfa-tiny`](https://github.com/calfa-co/hye-paddle) (based on
+  PP-OCRv6-tiny, the most accurate but slower), covering Classical, Western and
+  Eastern Armenian.
 
 It ships as the **`hyocr` command-line tool** (the main way to use it) plus an
-optional web app to illustrate and test it. Outputs: **plain text** (reading
-order), **searchable PDF**, **ALTO XML v4** and **structured JSON** (paragraphs →
+optional web app to illustrate and test it. Outputs:
+- **plain text**,
+- **searchable PDF**,
+- **ALTO XML v4**
+- **structured JSON** (paragraphs →
 lines → words, with boxes and confidences).
+
+Process doesn't require a GPU and can run on a CPU. Can be slow on large images or with dense contents.
 
 ## Architecture
 
@@ -36,7 +45,7 @@ image ──► LayoutEngine.analyze(image)            ──► regions (readin
 | Stage | Options |
 |---|---|
 | Layout | `yolo` (DocLayout-YOLO, fast) or `paddle` (PP-DocLayoutV3, tight polygons on skewed/degraded scans); reading order `xycut` (default) or `native` (paddle only) |
-| Recognition | `tesseract` (`hye-calfa-n`, default — faster) or `paddle` (`paddle-calfa-tiny` — higher accuracy) |
+| Recognition | `tesseract` (`hye-calfa-n`, based on Tesseract 5 — default, fastest) or `paddle` (`paddle-calfa-tiny`, based on PP-OCRv6-tiny — most accurate, slower) |
 
 The layout stage only finds regions; line and word segmentation is left to the
 recognizer.
@@ -47,14 +56,18 @@ All models are downloaded on first use and cached locally:
 
 | Model | Default source | Local override |
 |---|---|---|
-| DocLayout-YOLO weights (~40 MB) | public repo [`juliozhao/DocLayout-YOLO-DocStructBench`](https://huggingface.co/juliozhao/DocLayout-YOLO-DocStructBench) | `ARMENIAN_OCR_YOLO_WEIGHTS` (path to a `.pt` file) |
+| DocLayout-YOLO | public repo [`juliozhao/DocLayout-YOLO-DocStructBench`](https://huggingface.co/juliozhao/DocLayout-YOLO-DocStructBench) | `ARMENIAN_OCR_YOLO_WEIGHTS` (path to a `.pt` file) |
 | PP-DocLayoutV3 | public repo [`PaddlePaddle/PP-DocLayoutV3_safetensors`](https://huggingface.co/PaddlePaddle/PP-DocLayoutV3_safetensors) | `ARMENIAN_OCR_PADDLE_LAYOUT_DIR` (a model directory) |
-| `hye-calfa-n` (Tesseract) | public repo [`calfa-co/hye-tesseract`](https://github.com/calfa-co/hye-tesseract) | `ARMENIAN_OCR_TESSDATA_DIR` (a tessdata directory) |
-| `paddle-calfa-tiny` (PaddleOCR) | public repo [`calfa-co/hye-paddle`](https://github.com/calfa-co/hye-paddle) | `ARMENIAN_OCR_PADDLE_REC_DIR` (an inference directory) |
+| `hye-calfa-n` | public repo [`calfa-co/hye-tesseract`](https://github.com/calfa-co/hye-tesseract) | `ARMENIAN_OCR_TESSDATA_DIR` (a tessdata directory) |
+| `paddle-calfa-tiny` | public repo [`calfa-co/hye-paddle`](https://github.com/calfa-co/hye-paddle) | `ARMENIAN_OCR_PADDLE_REC_DIR` (an inference directory) |
 
-DocLayout-YOLO and PP-DocLayoutV3 are third-party, generic layout models. The
-Tesseract and Paddle recognition models are trained by Calfa; either can be
-replaced by a fine-tuned one via its override path without any code change.
+
+
+Both recognition models are also usable **standalone**, outside this pipeline,
+directly in their own ecosystem — `hye-calfa-n` as a Tesseract 5 traineddata
+file, `paddle-calfa-tiny` as a PaddleOCR recognition model. See their
+respective repositories for instructions. In every case the
+[license](#license) applies and the credits below are mandatory.
 
 ## Installation
 
@@ -132,7 +145,11 @@ not the primary interface. The `app/` directory is a FastAPI + vanilla JS
 single-page app: drag & drop an image or PDF, choose the layout and recognition
 models, per-page progress and text preview, a region/line overlay you can zoom, a
 **confidence preview** to see which regions a lower threshold recovers, a
-**compare** view for the layout detectors, and the four download formats.
+**compare** view for the layout detectors, and the four download formats. It is
+also the quickest way to **test layout-detection and reading-order settings** on
+your own documents before running a batch through `hyocr`.
+
+![The web app: layout and recognition options, region overlay and transcription](docs/webapp.jpg)
 
 Run it locally:
 
@@ -154,8 +171,11 @@ pytest                 # unit tests (no models needed)
 - **Layout detection** — [DocLayout-YOLO](https://github.com/opendatalab/DocLayout-YOLO)
   by [opendatalab](https://github.com/opendatalab); PP-DocLayoutV3 by PaddlePaddle.
 - **Recognition** — [`hye-calfa-n`](https://github.com/calfa-co/hye-tesseract)
-  and [`paddle-calfa-tiny`](https://github.com/calfa-co/hye-paddle), open models
-  trained by [Calfa](https://calfa.fr).
+  (Tesseract 5) and [`paddle-calfa-tiny`](https://github.com/calfa-co/hye-paddle)
+  (PP-OCRv6-tiny), open models trained by [Calfa](https://calfa.fr).
+- **Development & funding** — developed by [Calfa](https://calfa.fr), in
+  partnership with the DALiH project (ANR-21-CE38-0006) and with original
+  funding from the Calouste Gulbenkian Foundation.
 - **This project** — <https://github.com/calfa-co/hye-open-ocr>.
 - **Handwritten & complex documents, structure extraction** — Calfa:
   <https://ocr.calfa.fr>.
@@ -163,6 +183,8 @@ pytest                 # unit tests (no models needed)
 ## License
 
 CC BY-NC 4.0 — see [LICENSE](LICENSE-CC-BY-NC-4.0.md). The recognition models
-`hye-calfa-n` and `paddle-calfa-tiny` are © [Calfa](https://calfa.fr).
+`hye-calfa-n` and `paddle-calfa-tiny` are © [Calfa](https://calfa.fr); the
+license and the credits above apply to any use, including standalone use of a
+model in Tesseract or PaddleOCR.
 Third-party components keep their own licenses: **PyMuPDF** and
 **DocLayout-YOLO** are AGPL-3.0; **PaddleOCR** is Apache-2.0.
