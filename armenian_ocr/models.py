@@ -6,8 +6,9 @@ Three model artifacts back the pipeline:
   ``juliozhao/DocLayout-YOLO-DocStructBench`` HuggingFace repo (override with
   ``ARMENIAN_OCR_YOLO_WEIGHTS``) — a third-party, generic layout model;
 - the Tesseract ``hye-calfa-n.traineddata`` recognition model and the Paddle
-  ``paddle-calfa-tiny`` inference model, both trained by Calfa and published as
-  public GitHub repos (``calfa-co/hye-tesseract`` and ``calfa-co/hye-paddle``).
+  ``paddle-calfa-tiny`` / ``paddle-calfa-small`` inference models, all trained
+  by Calfa and published as public GitHub repos (``calfa-co/hye-tesseract`` and
+  ``calfa-co/hye-paddle``).
   They are fetched from ``raw.githubusercontent.com`` and cached locally.
 
 Each model can be overridden with a local path (``ARMENIAN_OCR_TESSDATA_DIR`` /
@@ -47,12 +48,22 @@ TESSERACT_VERSION = "v1.0.0"
 TESSDATA_FILE = "hye-calfa-n.traineddata"
 
 PADDLE_REPO = "hye-paddle"
-PADDLE_VERSION = "v1.0.0"
+PADDLE_VERSION = "v1.1.0"
+# Directory of each Paddle model in calfa-co/hye-paddle (one per model since
+# v1.1.0; v1.0.0 had the tiny in inference/).
+PADDLE_MODEL_DIRS = {"tiny": "tiny/inference", "small": "small/inference"}
 PADDLE_INFERENCE_FILES = (
     "inference.json",
     "inference.pdiparams",
     "inference.yml",
 )
+
+
+def _paddle_model_dir(model: str, ref: str) -> str:
+    """Directory of ``model`` in calfa-co/hye-paddle at ``ref``."""
+    if ref == "v1.0.0" and model == "tiny":
+        return "inference"
+    return PADDLE_MODEL_DIRS[model]
 
 
 def _models_source() -> str:
@@ -163,17 +174,21 @@ def tessdata_cached(revision: Optional[str] = None) -> bool:
     return (_cache_root() / TESSERACT_REPO / ref / TESSDATA_FILE).exists()
 
 
-def paddle_rec_cached(revision: Optional[str] = None) -> bool:
-    """True if the paddle recognizer model is already available locally."""
+def paddle_rec_cached(
+    revision: Optional[str] = None, model: str = "tiny"
+) -> bool:
+    """True if the paddle recognizer model ("tiny" or "small") is already
+    available locally."""
     if os.environ.get(ENV_PADDLE_REC_DIR):
         return True
     ref = revision or os.environ.get(ENV_PADDLE_VERSION) or PADDLE_VERSION
+    subdir = _paddle_model_dir(model, ref)
     if _models_source() == "hf":
         return all(
-            _hf_cached(PADDLE_REPO, ref, f"inference/{name}")
+            _hf_cached(PADDLE_REPO, ref, f"{subdir}/{name}")
             for name in PADDLE_INFERENCE_FILES
         )
-    root = _cache_root() / PADDLE_REPO / ref / "inference"
+    root = _cache_root() / PADDLE_REPO / ref / subdir
     return all((root / name).exists() for name in PADDLE_INFERENCE_FILES)
 
 
@@ -236,15 +251,18 @@ def get_tessdata_dir(revision: Optional[str] = None) -> Path:
     return path.parent
 
 
-def get_paddle_rec_dir(revision: Optional[str] = None) -> Path:
-    """Directory holding the paddle-calfa-tiny inference model.
+def get_paddle_rec_dir(
+    revision: Optional[str] = None, model: str = "tiny"
+) -> Path:
+    """Directory holding the paddle-calfa-tiny (``model="tiny"``) or
+    paddle-calfa-small (``model="small"``) inference model.
 
     A local directory set through ARMENIAN_OCR_PADDLE_REC_DIR takes precedence;
-    otherwise the ``inference/*`` files are downloaded from the public
-    ``calfa-co/hye-paddle`` GitHub repo at the pinned ``PADDLE_VERSION``
-    (override with ``revision`` or ARMENIAN_OCR_PADDLE_VERSION) and cached into
-    one directory, which is what ``PaddleRecognizer`` expects (it reads
-    ``inference.yml`` there).
+    otherwise the ``tiny/inference/*`` or ``small/inference/*`` files are
+    downloaded from the public ``calfa-co/hye-paddle`` GitHub repo at the
+    pinned ``PADDLE_VERSION`` (override with ``revision`` or
+    ARMENIAN_OCR_PADDLE_VERSION) and cached into one directory, which is what
+    ``PaddleRecognizer`` expects (it reads ``inference.yml`` there).
     """
     local = os.environ.get(ENV_PADDLE_REC_DIR)
     if local:
@@ -254,7 +272,7 @@ def get_paddle_rec_dir(revision: Optional[str] = None) -> Path:
     use_hf = _models_source() == "hf"
     directory = None
     for name in PADDLE_INFERENCE_FILES:
-        path_in_repo = f"inference/{name}"
+        path_in_repo = f"{_paddle_model_dir(model, ref)}/{name}"
         if use_hf:
             path = _hf_download(PADDLE_REPO, ref, path_in_repo)
         else:

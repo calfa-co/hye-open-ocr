@@ -115,6 +115,10 @@ async def health():
                 "available": ocr_service.paddle_available(),
                 "default": False,
             },
+            "paddle-small": {
+                "available": ocr_service.paddle_available(),
+                "default": False,
+            },
         },
         "layouts": {
             name: {
@@ -148,15 +152,15 @@ async def create_job(
     # OCR needs a working recognizer; compare mode runs no recognition.
     if (
         mode == "ocr"
-        and recognizer == "paddle"
+        and recognizer in ("paddle", "paddle-small")
         and not ocr_service.paddle_available()
     ):
         raise _error(
             422,
             "recognizer_unavailable",
-            "PaddleOCR backend not installed — install the paddle extra "
-            "(pip install \"hye-open-ocr[paddle]\"). The paddle-calfa-tiny "
-            "model itself is downloaded automatically.",
+            "PaddleOCR backend not installed, install the paddle extra "
+            "(pip install \"hye-open-ocr[paddle]\"). The paddle-calfa "
+            "models themselves are downloaded automatically.",
         )
 
     if store.queued_count() >= config.MAX_QUEUE:

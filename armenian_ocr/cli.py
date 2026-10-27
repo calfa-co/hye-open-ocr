@@ -29,8 +29,9 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Open OCR for Armenian documents (Classical / Western / Eastern). "
             "Pick a generic layout detector (--layout yolo|paddle) and an open "
-            "recognizer (--recognizer tesseract|paddle); or use --compare to "
-            "render layout + reading-order overlays without running OCR. "
+            "recognizer (--recognizer tesseract|paddle|paddle-small); or use "
+            "--compare to render layout + reading-order overlays without "
+            "running OCR. "
             "This is a free, open release — for handwritten and complex "
             "documents, and structure extraction, see Calfa "
             "(https://ocr.calfa.fr)."
@@ -79,11 +80,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--recognizer",
-        choices=("tesseract", "paddle"),
+        choices=("tesseract", "paddle", "paddle-small"),
         default="tesseract",
         help="Open recognition model trained by Calfa: 'tesseract' "
-        "(hye-calfa-n, default) or 'paddle' (paddle-calfa-tiny, PP-OCRv6-tiny). "
-        "Both auto-download from github.com/calfa-co (cached); override paddle "
+        "(hye-calfa-n, default), 'paddle' (paddle-calfa-tiny, PP-OCRv6-tiny) "
+        "or 'paddle-small' (paddle-calfa-small, PP-OCRv6-small). "
+        "All auto-download from github.com/calfa-co (cached); override paddle "
         "with ARMENIAN_OCR_PADDLE_REC_DIR, or set ARMENIAN_OCR_PADDLE_ALLOW_STOCK"
         "=1 to test with a stock rec.",
     )
@@ -113,7 +115,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--paddle-rec-dir",
         default=None,
-        help="Local paddle-calfa-tiny inference directory (skips "
+        help="Local paddle-calfa inference directory (skips "
         "auto-download; or set ARMENIAN_OCR_PADDLE_REC_DIR).",
     )
     parser.add_argument(
@@ -290,16 +292,21 @@ def main(argv=None) -> int:
 
     # Build the recognizer first so a misconfigured paddle engine fails fast
     # (before downloading the layout weights).
-    if args.recognizer == "paddle":
+    if args.recognizer in ("paddle", "paddle-small"):
         from armenian_ocr.recognition.paddle import PaddleRecognizer
 
-        if args.paddle_rec_dir is None and not models.paddle_rec_cached():
+        model = "small" if args.recognizer == "paddle-small" else "tiny"
+        if args.paddle_rec_dir is None and not models.paddle_rec_cached(
+            model=model
+        ):
             print(
-                "downloading paddle model paddle-calfa-tiny "
+                f"downloading paddle model paddle-calfa-{model} "
                 "(github.com/calfa-co/hye-paddle)… (one-time, cached)"
             )
         try:
-            recognizer = PaddleRecognizer(rec_model_dir=args.paddle_rec_dir)
+            recognizer = PaddleRecognizer(
+                rec_model_dir=args.paddle_rec_dir, model=model
+            )
         except RuntimeError as error:
             print(f"error: {error}", file=sys.stderr)
             return 1

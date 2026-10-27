@@ -128,3 +128,46 @@ def test_download_failure_raises(monkeypatch):
     ):
         with pytest.raises(RuntimeError):
             PaddleRecognizer(allow_stock_fallback=False)
+
+
+@pytest.mark.parametrize(
+    "model, subdir", [("tiny", "tiny/inference"), ("small", "small/inference")]
+)
+def test_model_fetches_its_inference_dir(tmp_path, monkeypatch, model, subdir):
+    from armenian_ocr import models
+
+    fetched = []
+
+    def fake_download(repo, ref, path_in_repo):
+        fetched.append((repo, ref, path_in_repo))
+        target = tmp_path / path_in_repo
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+        return target
+
+    for name in (
+        models.ENV_PADDLE_REC_DIR,
+        models.ENV_PADDLE_VERSION,
+        models.ENV_MODELS_SOURCE,
+        "ARMENIAN_OCR_PADDLE_ALLOW_STOCK",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(models, "_github_download", fake_download)
+    capture = {}
+    _recognizer({}, capture, model=model)
+
+    assert [path for _, _, path in fetched] == [
+        f"{subdir}/{name}" for name in models.PADDLE_INFERENCE_FILES
+    ]
+    assert {(repo, ref) for repo, ref, _ in fetched} == {
+        (models.PADDLE_REPO, models.PADDLE_VERSION)
+    }
+    assert capture["text_recognition_model_dir"] == str(tmp_path / subdir)
+
+
+def test_tiny_dir_at_v1_0_0():
+    from armenian_ocr import models
+
+    assert models._paddle_model_dir("tiny", "v1.0.0") == "inference"
+    assert models._paddle_model_dir("tiny", "v1.1.0") == "tiny/inference"
+    assert models._paddle_model_dir("small", "v1.1.0") == "small/inference"

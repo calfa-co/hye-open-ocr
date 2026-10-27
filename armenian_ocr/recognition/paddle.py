@@ -1,9 +1,11 @@
-"""PaddleOCR recognizer using the open Armenian ``paddle-calfa-tiny`` model.
+"""PaddleOCR recognizer using the open Armenian ``paddle-calfa-tiny`` model
+(or ``paddle-calfa-small`` with ``model="small"``).
 
-The model (a PP-OCRv6-tiny recognizer) is **downloaded automatically** from
-``github.com/calfa-co/hye-paddle`` on first use and cached locally; point
-``ARMENIAN_OCR_PADDLE_REC_DIR`` at a local inference model to override it. The
-recognizer then behaves like the reference ``TesseractRecognizer``:
+The model (a PP-OCRv6-tiny or -small recognizer) is **downloaded
+automatically** from ``github.com/calfa-co/hye-paddle`` on first use and cached
+locally; point ``ARMENIAN_OCR_PADDLE_REC_DIR`` at a local inference model to
+override it. The recognizer then behaves like the reference
+``TesseractRecognizer``:
 
 - for each layout region (already in reading order) the block is cropped
   with a little padding;
@@ -67,7 +69,7 @@ _BACKEND_MISSING = (
 # The paddle-calfa-tiny model auto-downloads from github.com/calfa-co/hye-paddle;
 # this is raised only if that download fails (offline / GitHub unreachable).
 _MODEL_DOWNLOAD_FAILED = (
-    "could not download the paddle-calfa-tiny model "
+    "could not download the paddle-calfa model "
     "(github.com/calfa-co/hye-paddle) — check your network, or set "
     "ARMENIAN_OCR_PADDLE_REC_DIR to a local inference directory"
 )
@@ -169,6 +171,7 @@ class PaddleRecognizer:
         det_unclip_ratio: Optional[float] = DEFAULT_DET_UNCLIP,
         det_limit_side_len: Optional[int] = DEFAULT_DET_LIMIT,
         det_box_thresh: Optional[float] = None,
+        model: str = "tiny",
     ):
         rec_model_dir = rec_model_dir or os.environ.get(ENV_REC_DIR)
         det_model_dir = det_model_dir or os.environ.get(ENV_DET_DIR)
@@ -186,13 +189,13 @@ class PaddleRecognizer:
         )
 
         # No explicit dir and no override env: fetch the open paddle-calfa-tiny
-        # model (github.com/calfa-co/hye-paddle), cached locally — mirrors how
-        # the Tesseract model is auto-downloaded.
+        # (or -small) model (github.com/calfa-co/hye-paddle), cached locally,
+        # as the Tesseract model is auto-downloaded.
         if not rec_model_dir and not allow_stock_fallback:
             from armenian_ocr import models
 
             try:
-                rec_model_dir = str(models.get_paddle_rec_dir())
+                rec_model_dir = str(models.get_paddle_rec_dir(model=model))
             except RuntimeError as error:
                 raise RuntimeError(_MODEL_DOWNLOAD_FAILED) from error
 

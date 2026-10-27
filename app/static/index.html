@@ -94,6 +94,15 @@
             </span>
             <span class="opt-desc">PP-OCRv6 model · Classical, Western &amp; Eastern Armenian</span>
           </label>
+          <label class="opt-card disabled" data-paddle-engine>
+            <input type="radio" name="engine" value="paddle-small" disabled>
+            <span class="opt-main">
+              <span class="opt-name">paddle-calfa-small</span>
+              <span class="opt-badge muted">Paddle</span>
+              <span class="opt-tag">highest accuracy</span>
+            </span>
+            <span class="opt-desc">PP-OCRv6 model · Classical, Western &amp; Eastern Armenian</span>
+          </label>
         </div>
         <p class="premium-note">Handwritten &amp; complex documents, structure extraction → <a href="https://ocr.calfa.fr" target="_blank" rel="noopener">Calfa</a>.</p>
       </div>
@@ -243,9 +252,10 @@
               regions and their reading order, then a <strong>recognition</strong>
               model transcribes each region. Layout uses third-party generic
               detectors; recognition uses open models trained by Calfa
-              (<code>hye-calfa-n</code> — based on Tesseract&nbsp;5 — and
-              <code>paddle-calfa-tiny</code> — based on PaddleOCRv6, both trained
-              for Western, Eastern and Classical Armenian). This is the open
+              (<code>hye-calfa-n</code>, based on Tesseract&nbsp;5, and
+              <code>paddle-calfa-tiny</code> and <code>paddle-calfa-small</code>,
+              based on PaddleOCRv6, all trained for Western, Eastern and
+              Classical Armenian). This is the open
               release, not Calfa's premium OCR; for handwritten and complex
               documents, and structure extraction, see
               <a href="https://ocr.calfa.fr" target="_blank" rel="noopener">Calfa</a>.
@@ -271,10 +281,12 @@
                 <a href="https://huggingface.co/PaddlePaddle/PP-DocLayoutV3_safetensors" target="_blank" rel="noopener">PP-DocLayoutV3</a>:
                 generic document-layout detectors, not Armenian-specific.</li>
               <li><strong>Reading order</strong> — recursive X-Y cut (a projection heuristic drawn from Portmind and updated), or PP-DocLayoutV3's own predicted order.</li>
-              <li><strong>Recognition (open, trained by Calfa)</strong> —
-                <code>hye-calfa-n</code> (Tesseract) and
+              <li><strong>Recognition (open, trained by Calfa)</strong>,
+                <code>hye-calfa-n</code> (Tesseract),
                 <a href="https://github.com/calfa-co/hye-paddle" target="_blank" rel="noopener"><code>paddle-calfa-tiny</code></a>
-                (PP-OCRv6-tiny).</li>
+                (PP-OCRv6-tiny) and
+                <a href="https://github.com/calfa-co/hye-paddle" target="_blank" rel="noopener"><code>paddle-calfa-small</code></a>
+                (PP-OCRv6-small).</li>
             </ul>
           </div>
 
@@ -303,14 +315,15 @@ hyocr page.png --layout paddle --recognizer tesseract
 # tune region detection + Tesseract segmentation
 hyocr page.jpg --yolo-conf 0.25 --region-psm 4
 
-# open Paddle model (paddle-calfa-tiny)
+# open Paddle models (paddle-calfa-tiny, paddle-calfa-small)
 hyocr page.png --recognizer paddle -f txt,json
+hyocr page.png --recognizer paddle-small -f txt,json
 
 # optional: point at a local copy instead of the auto-download
-export ARMENIAN_OCR_PADDLE_REC_DIR=/path/to/hye-paddle/inference</code></pre>
+export ARMENIAN_OCR_PADDLE_REC_DIR=/path/to/hye-paddle/tiny/inference</code></pre>
             <p class="cli-note">
               Key options: <code>--layout {yolo,paddle}</code>,
-              <code>--recognizer {tesseract,paddle}</code>,
+              <code>--recognizer {tesseract,paddle,paddle-small}</code>,
               <code>--yolo-conf</code>, <code>--region-psm</code>,
               <code>-f/--formats</code>, <code>-o/--output-dir</code>.
               Run <code>hyocr --help</code> for the full list.

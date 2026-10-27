@@ -25,7 +25,7 @@ class Job:
     original_name: str
     directory: Path
     total_pages: int
-    recognizer: str = "tesseract"  # tesseract (default) | paddle
+    recognizer: str = "tesseract"  # tesseract (default), paddle, paddle-small
     layout: Optional[str] = None  # None -> service default (config.LAYOUT_ENGINE)
     mode: str = "ocr"  # ocr | compare (OCR-free layout comparison)
     conf: Optional[float] = None  # layout detector confidence override

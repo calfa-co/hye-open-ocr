@@ -19,7 +19,7 @@ logger = logging.getLogger("app")
 # Recognizer engines the app can serve. Tesseract is the always-available
 # default; Paddle is built on demand and may be unavailable (no trained
 # model / no paddlepaddle), in which case the job errors gracefully.
-RECOGNIZERS = ("tesseract", "paddle")
+RECOGNIZERS = ("tesseract", "paddle", "paddle-small")
 DEFAULT_RECOGNIZER = "tesseract"
 
 # Layout (region) detectors. Both are region-level; the OCR flow uses one
@@ -116,11 +116,12 @@ def _get_detector(layout: str):
 
 
 def _build_recognizer(name: str, region_psm=None):
-    if name == "paddle":
+    if name in ("paddle", "paddle-small"):
         # raises RuntimeError with a clear message when unavailable
         from armenian_ocr.recognition.paddle import PaddleRecognizer
 
-        return PaddleRecognizer(block_pad=8)
+        model = "small" if name == "paddle-small" else "tiny"
+        return PaddleRecognizer(block_pad=8, model=model)
 
     from armenian_ocr import models
     from armenian_ocr.recognition.tesseract import TesseractRecognizer
@@ -210,9 +211,9 @@ def compare_page(image, detectors=LAYOUTS, orders=("xycut", "native"), conf=None
 def paddle_available() -> bool:
     """Whether the Paddle recognizer can be built.
 
-    The paddle-calfa-tiny model auto-downloads (github.com/calfa-co/hye-paddle),
+    The paddle-calfa models auto-download (github.com/calfa-co/hye-paddle),
     so availability just requires the paddle backend to be importable. Cheap
-    best-effort probe for the frontend — it does not instantiate PaddleOCR."""
+    best-effort probe for the frontend, it does not instantiate PaddleOCR."""
     import importlib.util
 
     if importlib.util.find_spec("paddleocr") is None:

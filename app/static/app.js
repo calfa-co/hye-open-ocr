@@ -575,22 +575,25 @@ async function newDocument() {
 
 function applyEngineAvailability(engines, layouts) {
   if (engines) {
-    const available = engines.paddle && engines.paddle.available;
-    const card = document.querySelector("[data-paddle-engine]");
-    const input = card && card.querySelector('input[value="paddle"]');
-    const badge = card && card.querySelector(".opt-badge");
-    if (input) input.disabled = !available;
-    if (card) card.classList.toggle("disabled", !available);
-    if (badge) {
-      badge.textContent = available ? "Paddle" : "Paddle · unavailable";
-      badge.classList.toggle("muted", true);
-    }
-    // update the tile description depending on availability
-    const desc = card && card.querySelector(".opt-desc");
-    if (desc) {
-      desc.textContent = available
-        ? "PP-OCRv6 model · Classical, Western & Eastern Armenian"
-        : "Install the paddle extra to enable (pip install '.[paddle]')";
+    // one card per Paddle model (paddle = tiny, paddle-small = small)
+    for (const card of document.querySelectorAll("[data-paddle-engine]")) {
+      const input = card.querySelector("input");
+      const engine = input && engines[input.value];
+      const available = engine && engine.available;
+      const badge = card.querySelector(".opt-badge");
+      if (input) input.disabled = !available;
+      card.classList.toggle("disabled", !available);
+      if (badge) {
+        badge.textContent = available ? "Paddle" : "Paddle · unavailable";
+        badge.classList.toggle("muted", true);
+      }
+      // update the tile description depending on availability
+      const desc = card.querySelector(".opt-desc");
+      if (desc) {
+        desc.textContent = available
+          ? "PP-OCRv6 model · Classical, Western & Eastern Armenian"
+          : "Install the paddle extra to enable (pip install '.[paddle]')";
+      }
     }
   }
   if (layouts) {
